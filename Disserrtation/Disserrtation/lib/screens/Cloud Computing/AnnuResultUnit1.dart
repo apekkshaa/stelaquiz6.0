@@ -1,0 +1,278 @@
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_database/firebase_database.dart';
+import 'package:csv/csv.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
+
+import 'package:universal_html/html.dart' as html; // used ONLY for web
+
+
+class CCresult extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter Firebase Table Example',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: COAMCQTablePage(),
+    );
+  }
+}
+
+class COAMCQTablePage extends StatefulWidget {
+  @override
+  _COAMCQTablePageState createState() => _COAMCQTablePageState();
+}
+
+class _COAMCQTablePageState extends State<COAMCQTablePage> {
+  final DatabaseReference databaseReference = FirebaseDatabase.instanceFor(
+    app: Firebase.app(),
+    databaseURL: "https://stela23-f9a52-default-rtdb.asia-southeast1.firebasedatabase.app",
+  ).ref();
+
+  List<String> secondColumnData = [];
+  List<String> thirdColumnData = [];
+
+  @override
+  void initState() {
+    super.initState();
+    getDataFromFirebase();
+  }
+// Operating System
+  void getDataFromFirebase() {
+    databaseReference.child('CC').once().then((DatabaseEvent event) {
+      if (event.snapshot.value != null) {
+        Map<dynamic, dynamic>? values = event.snapshot.value as Map<dynamic, dynamic>?;
+
+
+          List<String> data1 = [];
+          List<String> data3 = [];
+
+          values?.forEach((key, value) {
+
+              // Add the name of the child node to data list (second column)
+              data1.add(key.toString());
+              String totalMarks =value == null ?"N/A": value['3_Marks obtained'].toString();
+              data3.add(totalMarks);
+
+          });
+          setState(() {
+            secondColumnData = data1;
+            thirdColumnData = data3;
+          });
+
+      }
+    });
+  }
+    Future<bool> _requestFileSystemPermission() async {
+          final status = await Permission.photos.request();
+
+  
+      // final status = await Permission.photos.status;
+      print('vinay k${status}');
+      if (status != PermissionStatus.granted) {
+        final status = await Permission.photos.request();
+        if (status != PermissionStatus.granted) {
+          // if (hasPreviouslyDenied) {
+          //   showAlertDialogUpdated(
+          //     context,
+          //     title: 'Media Permission',
+          //     content: 'Please enable media permission to continue',
+          //     defaultActionText: 'Okay',
+          //   ).then((value) {
+          //     if (value == true) {
+          //       openAppSettings();
+          //     }
+          //   });
+          // } else {
+          //   // First time denial: store denial flag and return silently
+          //   prefs.setBool('hasPreviouslyDenied', true);
+          // }
+          return false;
+        }
+      }
+    
+    // prefs.setBool('hasPreviouslyDenied', false);
+
+    return true;
+  }
+
+  void _exportToExcel() async {
+    print('vinay kumar');
+              final status = await Permission.photos.request();
+
+    List<List<dynamic>> rows = [];
+  // bool dt=  await _requestFileSystemPermission();
+  if(status != PermissionStatus.granted){
+  if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('CSV saved to: enable permission')),
+        );
+      } 
+      return;
+       }
+    // Add header row
+    rows.add([
+      'Serial number',
+      'Enrollment Number',
+      'Total marks out of 20',
+    ]);
+
+    // Add data rows
+    for (int i = 0; i < secondColumnData.length; i++) {
+      rows.add([
+        (i + 1).toString(),
+        secondColumnData[i],
+        thirdColumnData[i],
+      ]);
+    }
+
+    String csv = const ListToCsvConverter().convert(rows);
+    final List<int> data = utf8.encode(csv);
+
+    if (kIsWeb) {
+      // ✅ Web export
+      final blob = html.Blob([data]);
+      final url = html.Url.createObjectUrlFromBlob(blob);
+      final anchor = html.AnchorElement(href: url)
+        ..setAttribute("download", "SE-Unit1_MCQ_Results.csv")
+        ..style.display = 'none';
+
+      html.document.body!.children.add(anchor);
+      anchor.click();
+      html.document.body!.children.remove(anchor);
+      html.Url.revokeObjectUrl(url);
+    } else {
+      // ✅ Mobile/Desktop: Save to Downloads folder
+      Directory? downloadsDirectory;
+
+      if (Platform.isAndroid) {
+        downloadsDirectory = Directory('/storage/emulated/0/Download');
+      } else if (Platform.isIOS) {
+        downloadsDirectory = await getApplicationDocumentsDirectory(); // iOS doesn't have Downloads folder access
+      } else {
+        downloadsDirectory = await getDownloadsDirectory(); // For Windows/Linux/MacOS
+      }
+     
+
+      String path = '${downloadsDirectory!.path}/SE-Unit1_MCQ_Results.csv';
+        int count = 0;
+            while (File(path).existsSync()) {
+              count++;
+              path = '${downloadsDirectory!.path}/SE-Unit1_MCQ_Results${count.toString()}.csv';
+            }
+      final file = File(path);
+      await file.writeAsBytes(data);
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('CSV saved to: $path')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('MCQ ASSESSMENT RESULTS'),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.file_download),
+            onPressed:
+            // ()async{
+            //                  await Permission.photos.request();
+
+            // }
+             _exportToExcel,
+          ),
+        ],
+      ),
+      body: SingleChildScrollView(
+        child: Table(
+          border: TableBorder.all(),
+          columnWidths: {
+            for (int i = 0; i < 13; i++) i: FlexColumnWidth(1.0),
+          },
+          children: List.generate(
+            secondColumnData.length + 1, // Adjusted for headings
+            (index) => TableRow(
+              children: [
+                // Serial number column
+                TableCell(
+                  child: Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: Text(
+                      (index == 0) ? 'Serial number' : '$index',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold, // Make the text bold
+                      ),
+                    ),
+                  ),
+                ),
+                // Heading for second column
+                if (index == 0)
+                  TableCell(
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text(
+                        'Enrollment Number',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold, // Make the text bold
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  // Populate the second column with Firebase data
+                  TableCell(
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text(
+                        (index <= secondColumnData.length) ? secondColumnData[index - 1] : '',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+
+                if (index == 0)
+                  TableCell(
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text(
+                        'Total Marks out of 20',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold, // Make the text bold
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  // Populate the second column with Firebase data
+                  TableCell(
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: Text(
+                        (index <= thirdColumnData.length) ? thirdColumnData[index - 1] : '',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
