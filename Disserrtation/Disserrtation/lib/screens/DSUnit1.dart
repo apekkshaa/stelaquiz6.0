@@ -26,7 +26,7 @@ class _DSUnit1State extends State<DSUnit1> {
     late int marks;
   bool alreadySubmitted = false;
 late DateTime pageVisitTime;
-late DateTime pageVisitTimeSubmit;
+DateTime? pageVisitTimeSubmit;
 late String userContent = '';
 late String expectedOutput = _controller.text;
 final TextEditingController _controller = TextEditingController(text: '''The manipulated value is: 45''');
@@ -172,12 +172,14 @@ late Timer _timer;
     super.initState();
 
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (!mounted) return;
       setState(() {
         if (_remainingTime > 0) {
           _remainingTime--;
         } else {
           timerExpired = true;
           _timer.cancel(); // Cancel the timer
+          pageVisitTimeSubmit ??= DateTime.now();
           _showResultDialog(); // Automatically click the result button
         }
       });
@@ -192,15 +194,15 @@ late Timer _timer;
 
  @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
+    return Scaffold(
         key: _scaffoldKey,
         appBar: AppBar(
           title: Text('Assessment'),
+          backgroundColor: primaryBar,
           actions: [
             Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Text(timerExpired ? 'Time\'s up!' : 'Time Left: ${_formatTime(_remainingTime)}'),
+              child: Text(timerExpired ? 'Time\'s up!' : 'Time Left: ${_formatTime(_remainingTime)}', style: TextStyle(color: Colors.white)),
             ),
           ],
         ),
@@ -375,8 +377,8 @@ RichText(
               SizedBox(height: 20),
               ElevatedButton(
                  onPressed: () {
-              _showResultDialog();
-                  pageVisitTimeSubmit = DateTime.now();
+                 pageVisitTimeSubmit = DateTime.now();
+                 _showResultDialog();
                   },
                 child: Text('Submit Test'),
               ),
@@ -436,9 +438,7 @@ RichText(
 
 
             ],
-      ),
-
-    ),
+          ),
         ),
       ),
     );
@@ -494,7 +494,7 @@ Widget _buildQuestionWidget(int questionNumber, List<String> question) {
   // Check if the name exists in the database
   DataSnapshot snapshot = await databaseReference.child('DS-Unit1').child(enrollmentNo).get();
  
-        Duration difference = pageVisitTimeSubmit.difference(pageVisitTime);
+        Duration difference = (pageVisitTimeSubmit ?? DateTime.now()).difference(pageVisitTime);
 
 int differenceInMinutes = difference.inMinutes;
 int differenceInSeconds = difference.inSeconds%60;
@@ -508,7 +508,7 @@ int differenceInSeconds = difference.inSeconds%60;
                   '5_Incorrect': incorrectCount,
                   '6_Unattempted': unattemptedCount,
                    '7_Start time': pageVisitTime.toString(),
-                      '8_End time': pageVisitTimeSubmit.toString(),
+                      '8_End time': (pageVisitTimeSubmit ?? DateTime.now()).toString(),
                       '11_Duration': differenceInMinutes.toString() + " minutes " + differenceInSeconds.toString() + " seconds",
                       '12_University Name': universityName,
                       '13_Course Name': courseName,
@@ -590,7 +590,7 @@ int differenceInSeconds = difference.inSeconds%60;
                   '5_Incorrect': incorrectCount,
                   '6_Unattempted': unattemptedCount,
                    '7_Start time': pageVisitTime.toString(),
-                      '8_End time': pageVisitTimeSubmit.toString(),
+                      '8_End time': (pageVisitTimeSubmit ?? DateTime.now()).toString(),
                       '11_Duration': differenceInMinutes.toString() + " minutes " + differenceInSeconds.toString() + " seconds",
                       '12_University Name': universityName,
                       '13_Course Name': courseName,

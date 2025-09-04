@@ -180,7 +180,10 @@ class _OSUnit1State extends State<OSUnit1> {
         actions: [
           Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Text(timerExpired ? 'Time\'s up!' : 'Time Left: ${_formatTime(_remainingTime)}'),
+            child: Text(
+              timerExpired ? 'Time\'s up!' : 'Time Left: ${_formatTime(_remainingTime)}',
+              style: const TextStyle(color: Colors.white),
+            ),
           ),
         ],
       ),
