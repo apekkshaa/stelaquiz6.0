@@ -38,7 +38,9 @@ __MACOSX/
 **/android/app/build/
 **/android/build/
 **/android/.gradle/
-**/android/gradle/
+# Do not ignore Gradle wrapper folder; needed for builds
+# (keep ignoring .gradle cache only)
+# **/android/gradle/
 **/android/local.properties
 
 # iOS build artifacts
@@ -82,7 +84,5 @@ __MACOSX/
 
 # Generated files
 **/generated_plugin_registrant.*
-**/firebase_options.dart
-**/firebase_app_id_file.json
-**/GoogleService-Info.plist
-**/google-services.json
+# Track Firebase app id file for iOS/macOS auto-config
+# **/firebase_app_id_file.json
